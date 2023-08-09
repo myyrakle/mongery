@@ -125,17 +125,23 @@ func processFile(configFile config.ConfigFile, packageName string, filename stri
 		}
 
 		os.WriteFile(outputFilePath, []byte(output), fs.FileMode(0644))
+
+		fmt.Printf(">> generated [%s]\n", outputFilePath)
 	}
 }
 
 func Generate() {
 	configFile := config.Load()
 
+	fmt.Println(">> scan files...")
 	packages := getPackageList(configFile.Basedir)
 
 	for packageName, asts := range packages {
 		for filename, file := range asts.Files {
+			fmt.Printf(">> scan [%s]...\n", filename)
 			processFile(configFile, packageName, filename, file)
 		}
 	}
+
+	fmt.Println(">>> done")
 }

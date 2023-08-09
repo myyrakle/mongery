@@ -26,5 +26,7 @@ func Load() ConfigFile {
 		log.Fatalf("Unmarshal: %v", err)
 	}
 
+	fmt.Println(">>> Config file loaded")
+
 	return *decoded
 }
