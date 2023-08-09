@@ -1,0 +1,2 @@
+basedir: ./models
+output-filename: "{original}_field.go"
