@@ -4,9 +4,9 @@ Copyright © 2023 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
 	"os"
 
+	"github.com/myyrakle/mongery/internal/run"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Use:   "mongery",
 	Short: "generate mongery codes",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("root called")
+		run.Generate()
 	},
 }
 
