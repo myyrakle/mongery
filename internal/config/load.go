@@ -9,8 +9,8 @@ import (
 )
 
 type ConfigFile struct {
-	Basedir        string `yaml:"basedir"`
-	OutputFilename string `yaml:"output-filename"`
+	Basedir      string `yaml:"basedir"`
+	OutputSuffix string `yaml:"output-suffix"`
 }
 
 func Load() ConfigFile {
