@@ -11,7 +11,7 @@ var rootCmd = &cobra.Command{
 	Use:   "mongery",
 	Short: "generate mongery codes",
 	Run: func(cmd *cobra.Command, args []string) {
-		run.Generate()
+		run.RunGenerate()
 	},
 }
 
