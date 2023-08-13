@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -157,9 +158,8 @@ func getDirList(basePath string) []string {
 	return dirList
 }
 
-func Generate(configFile ConfigFile) {
-	fmt.Println(">> scan files...")
-	packages := getPackageList(configFile.Basedir)
+func generateRecursive(basedir string, configFile ConfigFile) {
+	packages := getPackageList(basedir)
 
 	for packageName, asts := range packages {
 		for filename, file := range asts.Files {
@@ -171,6 +171,18 @@ func Generate(configFile ConfigFile) {
 			processFile(configFile, packageName, filename, file)
 		}
 	}
+
+	dirList := getDirList(basedir)
+
+	for _, dir := range dirList {
+		generateRecursive(path.Join(basedir, dir), configFile)
+	}
+}
+
+func Generate(configFile ConfigFile) {
+	fmt.Println(">>> scan files...")
+
+	generateRecursive(configFile.Basedir, configFile)
 
 	fmt.Println(">>> done")
 }
