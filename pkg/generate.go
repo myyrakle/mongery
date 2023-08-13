@@ -134,7 +134,9 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 
 		os.WriteFile(outputFilePath, []byte(output), fs.FileMode(0644))
 
-		fmt.Printf(">> generated [%s]\n", outputFilePath)
+		fmt.Printf(">>>> generated [%s]\n", outputFilePath)
+	} else {
+		fmt.Printf(">>>> no entity struct found in [%s]\n", filename)
 	}
 }
 
@@ -144,6 +146,10 @@ func Generate(configFile ConfigFile) {
 
 	for packageName, asts := range packages {
 		for filename, file := range asts.Files {
+			if strings.HasSuffix(filename, "_test.go") {
+				continue
+			}
+
 			fmt.Printf(">> scan [%s]...\n", filename)
 			processFile(configFile, packageName, filename, file)
 		}
