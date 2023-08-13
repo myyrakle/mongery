@@ -6,7 +6,9 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -140,9 +142,24 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 	}
 }
 
-func Generate(configFile ConfigFile) {
-	fmt.Println(">> scan files...")
-	packages := getPackageList(configFile.Basedir)
+func getDirList(basePath string) []string {
+	dirs, err := os.ReadDir(basePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var dirList []string
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			dirList = append(dirList, dir.Name())
+		}
+	}
+
+	return dirList
+}
+
+func generateRecursive(basedir string, configFile ConfigFile) {
+	packages := getPackageList(basedir)
 
 	for packageName, asts := range packages {
 		for filename, file := range asts.Files {
@@ -154,6 +171,18 @@ func Generate(configFile ConfigFile) {
 			processFile(configFile, packageName, filename, file)
 		}
 	}
+
+	dirList := getDirList(basedir)
+
+	for _, dir := range dirList {
+		generateRecursive(path.Join(basedir, dir), configFile)
+	}
+}
+
+func Generate(configFile ConfigFile) {
+	fmt.Println(">>> scan files...")
+
+	generateRecursive(configFile.Basedir, configFile)
 
 	fmt.Println(">>> done")
 }
