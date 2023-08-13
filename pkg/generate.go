@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -138,6 +139,22 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 	} else {
 		fmt.Printf(">>>> no entity struct found in [%s]\n", filename)
 	}
+}
+
+func getDirList(basePath string) []string {
+	dirs, err := os.ReadDir(basePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var dirList []string
+	for _, dir := range dirs {
+		if dir.IsDir() {
+			dirList = append(dirList, dir.Name())
+		}
+	}
+
+	return dirList
 }
 
 func Generate(configFile ConfigFile) {
