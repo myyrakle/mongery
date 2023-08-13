@@ -1,11 +1,11 @@
 # mongery
 
-![](https://img.shields.io/badge/language-Go-00ADD8) ![](https://img.shields.io/badge/version-0.2.2-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+![](https://img.shields.io/badge/language-Go-00ADD8) ![](https://img.shields.io/badge/version-0.3.0-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 ## install
 
 ```
-go install github.com/myyrakle/mongery@0.2.2
+go install github.com/myyrakle/mongery@v0.3.0
 ```
 
 ## confiuration
