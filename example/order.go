@@ -14,6 +14,7 @@ type Order struct {
 	ShippingCompanyName string `bson:"shippingCompanyName"` // 택배사명
 	InvoiceNumber       string `bson:"invoiceNumber"`       // 운송장 번호
 	OrderStatus         string `bson:"orderStatus"`         // 주문 상태
+	UsusedField         string `bson:"-"`                   // 저장되지 않음
 }
 
 // @Entity
