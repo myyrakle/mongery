@@ -16,4 +16,3 @@ const Order_OrderStatus = "orderStatus"
 const ItemOrder_ID = "_id"
 const ItemOrder_OrderID = "orderID"
 const ItemOrder_ItemID = "itemID"
-

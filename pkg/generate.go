@@ -14,6 +14,7 @@ import (
 	"github.com/myyrakle/mongery/pkg/cast"
 )
 
+// suffix를 붙여서 새로운 파일명을 만듭니다.
 func changeFileSuffix(filePath, newSuffix string) string {
 	dir := filepath.Dir(filePath)
 	ext := filepath.Ext(filePath)
@@ -23,6 +24,7 @@ func changeFileSuffix(filePath, newSuffix string) string {
 	return filepath.Join(dir, newName)
 }
 
+// 패키지 목록을 가져옵니다.
 func getPackageList(basePath string) map[string]*ast.Package {
 	fset := token.NewFileSet()
 
@@ -35,6 +37,7 @@ func getPackageList(basePath string) map[string]*ast.Package {
 	return packages
 }
 
+// 주석을 읽어와서 @Entity 구조체인지 검증합니다.
 func isEntityStruct(genDecl *ast.GenDecl) bool {
 	if genDecl.Doc == nil {
 		return false
@@ -53,6 +56,7 @@ func isEntityStruct(genDecl *ast.GenDecl) bool {
 	return false
 }
 
+// 필드 정보를 받아서 내보낼 상수 정의 코드로 변환합니다.
 func convertFieldToConstant(structName string, field *ast.Field) *string {
 	if len(field.Names) == 0 {
 		return nil
@@ -72,12 +76,17 @@ func convertFieldToConstant(structName string, field *ast.Field) *string {
 		return nil
 	}
 
+	if bson == "-" {
+		return nil
+	}
+
 	bsonTokens := strings.Split(bson, ",")
 	bsonName := bsonTokens[0]
 
 	return cast.ToPointer(fmt.Sprintf("const %s_%s = \"%s\"\n", structName, name, bsonName))
 }
 
+// 단일 파일을 처리하는 단위 함수입니다.
 func processFile(configFile ConfigFile, packageName string, filename string, file *ast.File) {
 	bsonConstantList := make([]string, 0)
 
