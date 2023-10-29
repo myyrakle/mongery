@@ -96,7 +96,16 @@ func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileC
 
 	constantKey := strings.Join(keyWords, "_")
 	constantValue := strings.Join(valueWords, ".")
-	constantCodes = append(constantCodes, fmt.Sprintf("const %s = \"%s\"\n", constantKey, constantValue))
+
+	constantCode := fmt.Sprintf("const %s = \"%s\"", constantKey, constantValue)
+
+	if field.comment != nil {
+		constantCode += fmt.Sprintf(" // %s", *field.comment)
+	} else {
+		constantCode += "\n"
+	}
+
+	constantCodes = append(constantCodes, constantCode)
 
 	for _, context := range contexts {
 		if context.packageName == field.typePackageName && context.structName == field.typeName {
@@ -111,9 +120,7 @@ func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileC
 
 // 필드 정보를 받아서 ProcessFileField로 변환합니다.
 func convertFieldToProcessFileField(structName string, packageName string, field *ast.Field) *ProcessFileField {
-	processFileField := ProcessFileField{
-		structName: structName,
-	}
+	processFileField := ProcessFileField{}
 
 	if len(field.Names) == 0 {
 		return nil
@@ -147,6 +154,11 @@ func convertFieldToProcessFileField(structName string, packageName string, field
 		return nil
 	}
 
+	if field.Comment != nil {
+		comment := field.Comment.Text()
+		processFileField.comment = cast.ToPointer(comment)
+	}
+
 	// 필드 타입이 포인터인 경우
 	if starExpr, ok := field.Type.(*ast.StarExpr); ok {
 		processFileField.isPointer = true
@@ -177,12 +189,12 @@ func convertFieldToProcessFileField(structName string, packageName string, field
 }
 
 type ProcessFileField struct {
-	structName      string
 	fieldName       string
 	bsonName        string
 	isPointer       bool
 	typePackageName string
 	typeName        string
+	comment         *string
 }
 
 type ProecssFileContext struct {
