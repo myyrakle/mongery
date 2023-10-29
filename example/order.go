@@ -1,5 +1,7 @@
 package models
 
+import "github.com/myyrakle/mongery/example/semiorder"
+
 // @Entity
 type Order struct {
 	ID                  string `bson:"_id,omitempty"`
@@ -15,6 +17,9 @@ type Order struct {
 	InvoiceNumber       string `bson:"invoiceNumber"`       // 운송장 번호
 	OrderStatus         string `bson:"orderStatus"`         // 주문 상태
 	UsusedField         string `bson:"-"`                   // 저장되지 않음
+
+	SemiOrder semiorder.SemiOrder `bson:"semiOrder"` // 세미오더 목록
+	person    Person              `bson:"persons"`   // 사람 목록
 }
 
 // @Entity

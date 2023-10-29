@@ -84,17 +84,34 @@ func getEntityParam(genDecl *ast.GenDecl) *string {
 }
 
 // 필드 정보를 받아서 내보낼 상수 정의 코드로 변환합니다.
-func convertFieldToConstantCode(field ProcessFileField, contexts []ProecssFileContext) string {
-	structName := field.structName
-	name := field.fieldName
+func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileContext, keyWords []string, valueWords []string, depth uint) []string {
+	if depth > 15 {
+		return []string{}
+	}
 
-	bsonName := field.bsonName
+	constantCodes := make([]string, 0)
 
-	return fmt.Sprintf("const %s_%s = \"%s\"\n", structName, name, bsonName)
+	keyWordsForThisField := append(keyWords, field.fieldName)
+	keyWordsForChildField := append(keyWords, field.typeName)
+	valueWords = append(valueWords, field.bsonName)
+
+	constantKey := strings.Join(keyWordsForThisField, "_")
+	constantValue := strings.Join(valueWords, ".")
+	constantCodes = append(constantCodes, fmt.Sprintf("const %s = \"%s\"\n", constantKey, constantValue))
+
+	for _, context := range contexts {
+		if context.packageName == field.typePackageName && context.structName == field.typeName {
+			for _, field := range context.fields {
+				constantCodes = append(constantCodes, convertFieldToConstantCodes(field, contexts, keyWordsForChildField, valueWords, depth+1)...)
+			}
+		}
+	}
+
+	return constantCodes
 }
 
 // 필드 정보를 받아서 ProcessFileField로 변환합니다.
-func convertFieldToProcessFileField(structName string, field *ast.Field) *ProcessFileField {
+func convertFieldToProcessFileField(structName string, packageName string, field *ast.Field) *ProcessFileField {
 	processFileField := ProcessFileField{
 		structName: structName,
 	}
@@ -135,19 +152,26 @@ func convertFieldToProcessFileField(structName string, field *ast.Field) *Proces
 	if starExpr, ok := field.Type.(*ast.StarExpr); ok {
 		processFileField.isPointer = true
 
+		// 패키지가 명시되어 있는 경우
 		if selectorExpr, ok := starExpr.X.(*ast.SelectorExpr); ok {
 			if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
-				processFileField.typePackageName = cast.ToPointer(xIdent.Name)
+				processFileField.typePackageName = xIdent.Name
 				processFileField.typeName = selectorExpr.Sel.Name
 			}
+		} else /* 패키지가 명시되어있지 않은 경우 */ if ident, ok := starExpr.X.(*ast.Ident); ok {
+			processFileField.typePackageName = packageName
+			processFileField.typeName = ident.Name
 		}
 	} else /* 필드 타입이 non-pointer에 패키지 명시가 있는 경우 */ if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
 		if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
-			processFileField.typePackageName = cast.ToPointer(xIdent.Name)
+			processFileField.typePackageName = xIdent.Name
 			processFileField.typeName = selectorExpr.Sel.Name
+		} else {
+			panic("unexpected error")
 		}
 	} else /* 필드 타입이 non-pointer에 패키지 명시도 없는 경우 */ if ident, ok := field.Type.(*ast.Ident); ok {
 		processFileField.typeName = ident.Name
+		processFileField.typePackageName = packageName
 	}
 
 	return &processFileField
@@ -158,7 +182,7 @@ type ProcessFileField struct {
 	fieldName       string
 	bsonName        string
 	isPointer       bool
-	typePackageName *string
+	typePackageName string
 	typeName        string
 }
 
@@ -203,7 +227,7 @@ func readFile(configFile ConfigFile, packageName string, filename string, file *
 
 					// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
 					for _, field := range structDecl.Fields.List {
-						processFileField := convertFieldToProcessFileField(structName, field)
+						processFileField := convertFieldToProcessFileField(structName, packageName, field)
 
 						if processFileField != nil {
 							processFileContext.fields = append(processFileContext.fields, *processFileField)
@@ -242,8 +266,8 @@ func writeFile(configFile ConfigFile, contexts []ProecssFileContext, index int) 
 
 	// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
 	for _, field := range processFileContext.fields {
-		constant := convertFieldToConstantCode(field, contexts)
-		bsonConstantList = append(bsonConstantList, constant)
+		constantCodes := convertFieldToConstantCodes(field, contexts, []string{structName}, []string{}, 0)
+		bsonConstantList = append(bsonConstantList, constantCodes...)
 	}
 
 	bsonConstantList = append(bsonConstantList, "\n")
