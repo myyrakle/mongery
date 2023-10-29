@@ -84,12 +84,44 @@ func getEntityParam(genDecl *ast.GenDecl) *string {
 }
 
 // 필드 정보를 받아서 내보낼 상수 정의 코드로 변환합니다.
-func convertFieldToConstant(structName string, field *ast.Field) *string {
+func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileContext, keyWords []string, valueWords []string, depth uint) []string {
+	if depth > 15 {
+		return []string{}
+	}
+
+	constantCodes := make([]string, 0)
+
+	keyWordsForThisField := append(keyWords, field.fieldName)
+	keyWordsForChildField := append(keyWords, field.typeName)
+	valueWords = append(valueWords, field.bsonName)
+
+	constantKey := strings.Join(keyWordsForThisField, "_")
+	constantValue := strings.Join(valueWords, ".")
+	constantCodes = append(constantCodes, fmt.Sprintf("const %s = \"%s\"\n", constantKey, constantValue))
+
+	for _, context := range contexts {
+		if context.packageName == field.typePackageName && context.structName == field.typeName {
+			for _, field := range context.fields {
+				constantCodes = append(constantCodes, convertFieldToConstantCodes(field, contexts, keyWordsForChildField, valueWords, depth+1)...)
+			}
+		}
+	}
+
+	return constantCodes
+}
+
+// 필드 정보를 받아서 ProcessFileField로 변환합니다.
+func convertFieldToProcessFileField(structName string, packageName string, field *ast.Field) *ProcessFileField {
+	processFileField := ProcessFileField{
+		structName: structName,
+	}
+
 	if len(field.Names) == 0 {
 		return nil
 	}
 
 	name := field.Names[0].Name
+	processFileField.fieldName = name
 
 	if field.Tag == nil {
 		return nil
@@ -110,12 +142,62 @@ func convertFieldToConstant(structName string, field *ast.Field) *string {
 	bsonTokens := strings.Split(bson, ",")
 	bsonName := bsonTokens[0]
 
-	return cast.ToPointer(fmt.Sprintf("const %s_%s = \"%s\"\n", structName, name, bsonName))
+	processFileField.bsonName = bsonName
+
+	if field.Type == nil {
+		return nil
+	}
+
+	// 필드 타입이 포인터인 경우
+	if starExpr, ok := field.Type.(*ast.StarExpr); ok {
+		processFileField.isPointer = true
+
+		// 패키지가 명시되어 있는 경우
+		if selectorExpr, ok := starExpr.X.(*ast.SelectorExpr); ok {
+			if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
+				processFileField.typePackageName = xIdent.Name
+				processFileField.typeName = selectorExpr.Sel.Name
+			}
+		} else /* 패키지가 명시되어있지 않은 경우 */ if ident, ok := starExpr.X.(*ast.Ident); ok {
+			processFileField.typePackageName = packageName
+			processFileField.typeName = ident.Name
+		}
+	} else /* 필드 타입이 non-pointer에 패키지 명시가 있는 경우 */ if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
+		if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
+			processFileField.typePackageName = xIdent.Name
+			processFileField.typeName = selectorExpr.Sel.Name
+		} else {
+			panic("unexpected error")
+		}
+	} else /* 필드 타입이 non-pointer에 패키지 명시도 없는 경우 */ if ident, ok := field.Type.(*ast.Ident); ok {
+		processFileField.typeName = ident.Name
+		processFileField.typePackageName = packageName
+	}
+
+	return &processFileField
 }
 
-// 단일 파일을 처리하는 단위 함수입니다.
-func processFile(configFile ConfigFile, packageName string, filename string, file *ast.File) {
-	bsonConstantList := make([]string, 0)
+type ProcessFileField struct {
+	structName      string
+	fieldName       string
+	bsonName        string
+	isPointer       bool
+	typePackageName string
+	typeName        string
+}
+
+type ProecssFileContext struct {
+	packageName string
+	file        *ast.File
+	filename    string
+	structName  string
+	entityParam *string
+	fields      []ProcessFileField
+}
+
+// 단일 파일을 읽어서 형식화하는 단위 함수입니다.
+func readFile(configFile ConfigFile, packageName string, filename string, file *ast.File) []ProecssFileContext {
+	contexts := make([]ProecssFileContext, 0)
 
 	for _, declare := range file.Decls {
 		if genDecl, ok := declare.(*ast.GenDecl); ok {
@@ -134,46 +216,100 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 					entityParam := getEntityParam(genDecl)
 
 					structName := typeSpec.Name.Name
-					collectionConstKey := structName + "Collection"
-					collectionConstValue := strcase.SnakeCase(structName)
 
-					if entityParam != nil {
-						collectionConstValue = *entityParam
+					processFileContext := ProecssFileContext{
+						packageName: packageName,
+						file:        file,
+						filename:    filename,
+						structName:  structName,
+						entityParam: entityParam,
 					}
-
-					collectionConst := fmt.Sprintf("const %s = \"%s\"\n", collectionConstKey, collectionConstValue)
-					bsonConstantList = append(bsonConstantList, collectionConst)
 
 					// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
 					for _, field := range structDecl.Fields.List {
-						constant := convertFieldToConstant(structName, field)
+						processFileField := convertFieldToProcessFileField(structName, packageName, field)
 
-						if constant != nil {
-							bsonConstantList = append(bsonConstantList, *constant)
+						if processFileField != nil {
+							processFileContext.fields = append(processFileContext.fields, *processFileField)
 						}
 					}
 
-					bsonConstantList = append(bsonConstantList, "\n")
+					contexts = append(contexts, processFileContext)
 				}
 			}
 		}
 	}
 
+	return contexts
+}
+
+var fileWriteMap map[string]struct{} = make(map[string]struct{})
+
+// 단일 파일을 처리하는 단위 함수입니다.
+func writeFile(configFile ConfigFile, contexts []ProecssFileContext, index int) {
+	processFileContext := contexts[index]
+
+	bsonConstantList := make([]string, 0)
+
+	packageName := processFileContext.packageName
+	filename := processFileContext.filename
+	structName := processFileContext.structName
+	collectionConstKey := structName + "Collection"
+	collectionConstValue := strcase.SnakeCase(structName)
+
+	if processFileContext.entityParam != nil {
+		collectionConstValue = *processFileContext.entityParam
+	}
+
+	collectionConst := fmt.Sprintf("const %s = \"%s\"\n", collectionConstKey, collectionConstValue)
+	bsonConstantList = append(bsonConstantList, collectionConst)
+
+	// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
+	for _, field := range processFileContext.fields {
+		constantCodes := convertFieldToConstantCodes(field, contexts, []string{structName}, []string{}, 0)
+		bsonConstantList = append(bsonConstantList, constantCodes...)
+	}
+
+	bsonConstantList = append(bsonConstantList, "\n")
+
 	if len(bsonConstantList) > 0 {
 		outputFilePath := changeFileSuffix(filename, configFile.OutputSuffix)
 
-		output := ""
-		output += "// Code generated by mongery. DO NOT EDIT.\n"
-		output += `package ` + packageName
-		output += "\n\n"
+		if _, ok := fileWriteMap[outputFilePath]; ok {
+			output := ""
 
-		for _, bsonConstant := range bsonConstantList {
-			output += bsonConstant
+			for _, bsonConstant := range bsonConstantList {
+				output += bsonConstant
+			}
+
+			// append
+			file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+			if err != nil {
+				panic(err)
+			}
+			file.WriteString(output)
+			if err := file.Close(); err != nil {
+				panic(err)
+			}
+
+			fmt.Printf(">>>> write [%s]\n", outputFilePath)
+		} else {
+			fileWriteMap[outputFilePath] = struct{}{}
+
+			output := ""
+			output += "// Code generated by mongery. DO NOT EDIT.\n"
+			output += `package ` + packageName
+			output += "\n\n"
+
+			for _, bsonConstant := range bsonConstantList {
+				output += bsonConstant
+			}
+
+			os.WriteFile(outputFilePath, []byte(output), fs.FileMode(0644))
+
+			fmt.Printf(">>>> generated [%s]\n", outputFilePath)
 		}
 
-		os.WriteFile(outputFilePath, []byte(output), fs.FileMode(0644))
-
-		fmt.Printf(">>>> generated [%s]\n", outputFilePath)
 	} else {
 		fmt.Printf(">>>> no entity struct found in [%s]\n", filename)
 	}
@@ -195,7 +331,9 @@ func getDirList(basePath string) []string {
 	return dirList
 }
 
-func generateRecursive(basedir string, configFile ConfigFile) {
+func readFileRecursive(basedir string, configFile ConfigFile) []ProecssFileContext {
+	contexts := make([]ProecssFileContext, 0)
+
 	packages := getPackageList(basedir)
 
 	for packageName, asts := range packages {
@@ -205,21 +343,31 @@ func generateRecursive(basedir string, configFile ConfigFile) {
 			}
 
 			fmt.Printf(">> scan [%s]...\n", filename)
-			processFile(configFile, packageName, filename, file)
+			eachContexts := readFile(configFile, packageName, filename, file)
+			contexts = append(contexts, eachContexts...)
 		}
 	}
 
 	dirList := getDirList(basedir)
 
 	for _, dir := range dirList {
-		generateRecursive(path.Join(basedir, dir), configFile)
+		eachContexts := readFileRecursive(path.Join(basedir, dir), configFile)
+		contexts = append(contexts, eachContexts...)
 	}
+
+	return contexts
 }
 
 func Generate(configFile ConfigFile) {
 	fmt.Println(">>> scan files...")
+	processFileContexts := readFileRecursive(configFile.Basedir, configFile)
+	fmt.Println(">>> scan files done")
 
-	generateRecursive(configFile.Basedir, configFile)
+	fmt.Println(">>> process files...")
 
-	fmt.Println(">>> done")
+	for i := range processFileContexts {
+		writeFile(configFile, processFileContexts, i)
+	}
+
+	fmt.Println(">>> process files done")
 }
