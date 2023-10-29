@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/myyrakle/mongery/internal/annotation"
 	"github.com/myyrakle/mongery/pkg/cast"
 )
 
@@ -56,6 +57,29 @@ func isEntityStruct(genDecl *ast.GenDecl) bool {
 	}
 
 	return false
+}
+
+// @Entity의 파라미터를 가져옵니다.
+func getEntityParam(genDecl *ast.GenDecl) *string {
+	if genDecl.Doc == nil {
+		return nil
+	}
+
+	if genDecl.Doc.List == nil {
+		return nil
+	}
+
+	for _, comment := range genDecl.Doc.List {
+		if strings.Contains(comment.Text, "@Entity") {
+			params := annotation.ParseParameters(comment.Text)
+
+			if len(params) > 0 {
+				return cast.ToPointer(params[0])
+			}
+		}
+	}
+
+	return nil
 }
 
 // 필드 정보를 받아서 내보낼 상수 정의 코드로 변환합니다.
