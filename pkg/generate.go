@@ -15,6 +15,7 @@ import (
 
 	"github.com/myyrakle/mongery/internal/annotation"
 	"github.com/myyrakle/mongery/pkg/cast"
+	"github.com/stoewer/go-strcase"
 )
 
 // suffix를 붙여서 새로운 파일명을 만듭니다.
@@ -130,7 +131,18 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 						continue
 					}
 
+					entityParam := getEntityParam(genDecl)
+
 					structName := typeSpec.Name.Name
+					collectionConstKey := structName + "Collection"
+					collectionConstValue := strcase.SnakeCase(structName)
+
+					if entityParam != nil {
+						collectionConstValue = *entityParam
+					}
+
+					collectionConst := fmt.Sprintf("const %s = \"%s\"\n", collectionConstKey, collectionConstValue)
+					bsonConstantList = append(bsonConstantList, collectionConst)
 
 					// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
 					for _, field := range structDecl.Fields.List {
