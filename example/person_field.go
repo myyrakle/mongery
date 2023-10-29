@@ -3,5 +3,5 @@ package models
 
 const PersonCollection = "person"
 const Person_ID = "_id"
-const Person_Name = "name"
+const Person_Name = "name" // 이름
 
