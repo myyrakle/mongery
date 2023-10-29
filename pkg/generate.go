@@ -113,6 +113,129 @@ func convertFieldToConstant(structName string, field *ast.Field) *string {
 	return cast.ToPointer(fmt.Sprintf("const %s_%s = \"%s\"\n", structName, name, bsonName))
 }
 
+// 필드 정보를 받아서 ProcessFileField로 변환합니다.
+func convertFieldToProcessFileField(structName string, field *ast.Field) *ProcessFileField {
+	processFileField := ProcessFileField{}
+
+	if len(field.Names) == 0 {
+		return nil
+	}
+
+	name := field.Names[0].Name
+	processFileField.fieldName = name
+
+	if field.Tag == nil {
+		return nil
+	}
+
+	tag := strings.ReplaceAll(field.Tag.Value, "`", "")
+
+	bson := reflect.StructTag(tag).Get("bson")
+
+	if bson == "" {
+		return nil
+	}
+
+	if bson == "-" {
+		return nil
+	}
+
+	bsonTokens := strings.Split(bson, ",")
+	bsonName := bsonTokens[0]
+
+	processFileField.bsonName = bsonName
+
+	if field.Type == nil {
+		return nil
+	}
+
+	// 필드 타입이 포인터인 경우
+	if starExpr, ok := field.Type.(*ast.StarExpr); ok {
+		processFileField.isPointer = true
+
+		if selectorExpr, ok := starExpr.X.(*ast.SelectorExpr); ok {
+			if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
+				processFileField.typePackageName = cast.ToPointer(xIdent.Name)
+				processFileField.typeName = selectorExpr.Sel.Name
+			}
+		}
+	} else /* 필드 타입이 non-pointer에 패키지 명시가 있는 경우 */ if selectorExpr, ok := field.Type.(*ast.SelectorExpr); ok {
+		if xIdent, ok := selectorExpr.X.(*ast.Ident); ok {
+			processFileField.typePackageName = cast.ToPointer(xIdent.Name)
+			processFileField.typeName = selectorExpr.Sel.Name
+		}
+	} else /* 필드 타입이 non-pointer에 패키지 명시도 없는 경우 */ if ident, ok := field.Type.(*ast.Ident); ok {
+		processFileField.typeName = ident.Name
+	}
+
+	return &processFileField
+}
+
+type ProcessFileField struct {
+	fieldName       string
+	bsonName        string
+	isPointer       bool
+	typePackageName *string
+	typeName        string
+}
+
+type ProecssFileContext struct {
+	packageName string
+	file        *ast.File
+	filename    string
+	structName  string
+	entityParam *string
+	fields      []ProcessFileField
+}
+
+// 단일 파일을 읽어서 형식화하는 단위 함수입니다.
+func readFile(configFile ConfigFile, packageName string, filename string, file *ast.File) []ProecssFileContext {
+	contexts := make([]ProecssFileContext, 0)
+
+	for _, declare := range file.Decls {
+		if genDecl, ok := declare.(*ast.GenDecl); ok {
+			for _, spec := range genDecl.Specs {
+				if typeSpec, ok := spec.(*ast.TypeSpec); ok {
+					structDecl, _ := typeSpec.Type.(*ast.StructType)
+
+					if structDecl == nil {
+						continue
+					}
+
+					if !isEntityStruct(genDecl) {
+						continue
+					}
+
+					entityParam := getEntityParam(genDecl)
+
+					structName := typeSpec.Name.Name
+
+					processFileContext := ProecssFileContext{
+						packageName: packageName,
+						file:        file,
+						filename:    filename,
+						structName:  structName,
+						entityParam: entityParam,
+					}
+
+					// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
+					for _, field := range structDecl.Fields.List {
+						processFileField := convertFieldToProcessFileField(structName, field)
+
+						if processFileField != nil {
+							processFileContext.fields = append(processFileContext.fields, *processFileField)
+						}
+					}
+
+					contexts = append(contexts, processFileContext)
+				}
+			}
+		}
+	}
+
+	return contexts
+}
+
 // 단일 파일을 처리하는 단위 함수입니다.
 func processFile(configFile ConfigFile, packageName string, filename string, file *ast.File) {
 	bsonConstantList := make([]string, 0)
