@@ -91,18 +91,17 @@ func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileC
 
 	constantCodes := make([]string, 0)
 
-	keyWordsForThisField := append(keyWords, field.fieldName)
-	keyWordsForChildField := append(keyWords, field.typeName)
+	keyWords = append(keyWords, field.fieldName)
 	valueWords = append(valueWords, field.bsonName)
 
-	constantKey := strings.Join(keyWordsForThisField, "_")
+	constantKey := strings.Join(keyWords, "_")
 	constantValue := strings.Join(valueWords, ".")
 	constantCodes = append(constantCodes, fmt.Sprintf("const %s = \"%s\"\n", constantKey, constantValue))
 
 	for _, context := range contexts {
 		if context.packageName == field.typePackageName && context.structName == field.typeName {
 			for _, field := range context.fields {
-				constantCodes = append(constantCodes, convertFieldToConstantCodes(field, contexts, keyWordsForChildField, valueWords, depth+1)...)
+				constantCodes = append(constantCodes, convertFieldToConstantCodes(field, contexts, keyWords, valueWords, depth+1)...)
 			}
 		}
 	}
