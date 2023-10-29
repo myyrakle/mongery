@@ -318,7 +318,7 @@ func getDirList(basePath string) []string {
 	return dirList
 }
 
-func generateRecursive(basedir string, configFile ConfigFile) {
+func readFileRecursive(basedir string, configFile ConfigFile) {
 	packages := getPackageList(basedir)
 
 	for packageName, asts := range packages {
@@ -328,21 +328,21 @@ func generateRecursive(basedir string, configFile ConfigFile) {
 			}
 
 			fmt.Printf(">> scan [%s]...\n", filename)
-			processFile(configFile, packageName, filename, file)
+			readFile(configFile, packageName, filename, file)
 		}
 	}
 
 	dirList := getDirList(basedir)
 
 	for _, dir := range dirList {
-		generateRecursive(path.Join(basedir, dir), configFile)
+		readFileRecursive(path.Join(basedir, dir), configFile)
 	}
 }
 
 func Generate(configFile ConfigFile) {
 	fmt.Println(">>> scan files...")
 
-	generateRecursive(configFile.Basedir, configFile)
+	readFileRecursive(configFile.Basedir, configFile)
 
 	fmt.Println(">>> done")
 }
