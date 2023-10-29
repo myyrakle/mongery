@@ -1,6 +1,6 @@
 package semiorder
 
-// @Entity
+// @Entity(asdf.foo)
 type SemiOrder struct {
 	ID            string `bson:"_id,omitempty"`
 	BuyerName     string `bson:"buyerName"`     // 구매자명

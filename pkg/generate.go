@@ -13,7 +13,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/myyrakle/mongery/internal/annotation"
 	"github.com/myyrakle/mongery/pkg/cast"
+	"github.com/stoewer/go-strcase"
 )
 
 // suffix를 붙여서 새로운 파일명을 만듭니다.
@@ -56,6 +58,29 @@ func isEntityStruct(genDecl *ast.GenDecl) bool {
 	}
 
 	return false
+}
+
+// @Entity의 파라미터를 가져옵니다.
+func getEntityParam(genDecl *ast.GenDecl) *string {
+	if genDecl.Doc == nil {
+		return nil
+	}
+
+	if genDecl.Doc.List == nil {
+		return nil
+	}
+
+	for _, comment := range genDecl.Doc.List {
+		if strings.Contains(comment.Text, "@Entity") {
+			params := annotation.ParseParameters(comment.Text)
+
+			if len(params) > 0 {
+				return cast.ToPointer(params[0])
+			}
+		}
+	}
+
+	return nil
 }
 
 // 필드 정보를 받아서 내보낼 상수 정의 코드로 변환합니다.
@@ -106,7 +131,18 @@ func processFile(configFile ConfigFile, packageName string, filename string, fil
 						continue
 					}
 
+					entityParam := getEntityParam(genDecl)
+
 					structName := typeSpec.Name.Name
+					collectionConstKey := structName + "Collection"
+					collectionConstValue := strcase.SnakeCase(structName)
+
+					if entityParam != nil {
+						collectionConstValue = *entityParam
+					}
+
+					collectionConst := fmt.Sprintf("const %s = \"%s\"\n", collectionConstKey, collectionConstValue)
+					bsonConstantList = append(bsonConstantList, collectionConst)
 
 					// 구조체 필드를 순회하면서 필요한 정보를 추출합니다.
 					for _, field := range structDecl.Fields.List {
