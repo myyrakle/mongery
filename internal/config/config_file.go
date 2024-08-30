@@ -1,4 +1,4 @@
-package pkg
+package config
 
 type ConfigFile struct {
 	Basedir      string `yaml:"basedir"`
