@@ -1,2 +1,4 @@
 basedir: example
 output-suffix: "_field.go"
+features:
+  - SLICE
