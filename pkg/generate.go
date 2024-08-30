@@ -99,7 +99,7 @@ func convertFieldToConstantCodes(field ProcessFileField, contexts []ProecssFileC
 
 	constantCode := fmt.Sprintf("const %s = \"%s\"", constantKey, constantValue)
 
-	if field.comment != nil {
+	if field.comment != nil && *field.comment != "" {
 		constantCode += fmt.Sprintf(" // %s", *field.comment)
 	} else {
 		constantCode += "\n"
