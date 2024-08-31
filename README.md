@@ -1,13 +1,13 @@
 # mongery
 
-![](https://img.shields.io/badge/language-Go-00ADD8) ![](https://img.shields.io/badge/version-0.4.0-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+![](https://img.shields.io/badge/language-Go-00ADD8) ![](https://img.shields.io/badge/version-0.5.0-brightgreen) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 
 [document](https://pkg.go.dev/github.com/myyrakle/mongery)
 
 ## install
 
 ```
-go install github.com/myyrakle/mongery@v0.4.0
+go install github.com/myyrakle/mongery@v0.5.0
 ```
 
 ## confiuration
@@ -68,4 +68,45 @@ const Order_ShippingCompanyCode = "shippingCompanyCode"
 const Order_ShippingCompanyName = "shippingCompanyName"
 const Order_InvoiceNumber = "invoiceNumber"
 const Order_OrderStatus = "orderStatus"
+```
+
+## Features - Slice 
+
+```yaml
+features:
+  - SLICE
+```
+If you enable Slice among the features flags, it creates a basic boilerplate for Slice.
+
+
+It is as follows:
+```go
+type PersonSoManies []PersonSoMany
+
+func (t PersonSoManies) Len() int {
+	return len(t)
+}
+
+func (t PersonSoManies) IsEmpty() bool {
+	return len(t) == 0
+}
+
+func (t PersonSoManies) Append(v PersonSoMany) PersonSoManies {
+	t = append(t, v)
+	return s
+}
+
+func (t PersonSoManies) First() PersonSoMany {
+	if t.IsEmpty() {
+		return PersonSoMany{}
+	}
+	return t[0]
+}
+
+func (t PersonSoManies) Last() PersonSoMany {
+	if t.IsEmpty() {
+		return PersonSoMany{}
+	}
+	return t[len(t)-1]
+}
 ```

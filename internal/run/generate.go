@@ -308,43 +308,43 @@ func writeFile(configFile config.ConfigFile, contexts []ProecssFileContext, inde
 				output += fmt.Sprintf("type %s []%s\n\n", sliceTypeName, structName)
 
 				// Len 메서드 생성
-				lenMethod := fmt.Sprintf("func (s %s) Len() int {\n", sliceTypeName)
-				lenMethod += "\treturn len(s)\n"
+				lenMethod := fmt.Sprintf("func (t %s) Len() int {\n", sliceTypeName)
+				lenMethod += "\treturn len(t)\n"
 				lenMethod += "}\n\n"
 
 				output += lenMethod
 
 				// Append 메서드 생성
-				appendMethod := fmt.Sprintf("func (s %s) Append(v %s) %s {\n", sliceTypeName, structName, sliceTypeName)
-				appendMethod += "\ts = append(s, v)\n"
-				appendMethod += "\treturn s\n"
+				appendMethod := fmt.Sprintf("func (t %s) Append(v %s) %s {\n", sliceTypeName, structName, sliceTypeName)
+				appendMethod += "\tt = append(t, v)\n"
+				appendMethod += "\treturn t\n"
 				appendMethod += "}\n\n"
 
 				output += appendMethod
 
 				// Empty 메서드 생성
-				emptyMethod := fmt.Sprintf("func (s %s) Empty() bool {\n", sliceTypeName)
-				emptyMethod += "\treturn len(s) == 0\n"
+				emptyMethod := fmt.Sprintf("func (t %s) Empty() bool {\n", sliceTypeName)
+				emptyMethod += "\treturn len(t) == 0\n"
 				emptyMethod += "}\n\n"
 
 				output += emptyMethod
 
 				// First 메서드 생성
-				firstMethod := fmt.Sprintf("func (s %s) First() %s {\n", sliceTypeName, structName)
-				firstMethod += "\tif len(s) == 0 {\n"
+				firstMethod := fmt.Sprintf("func (t %s) First() %s {\n", sliceTypeName, structName)
+				firstMethod += "\tif len(t) == 0 {\n"
 				firstMethod += fmt.Sprintf("\t\treturn %s{}\n", structName)
 				firstMethod += "\t}\n"
-				firstMethod += "\treturn s[0]\n"
+				firstMethod += "\treturn t[0]\n"
 				firstMethod += "}\n\n"
 
 				output += firstMethod
 
 				// Last 메서드 생성
-				lastMethod := fmt.Sprintf("func (s %s) Last() %s {\n", sliceTypeName, structName)
-				lastMethod += "\tif len(s) == 0 {\n"
+				lastMethod := fmt.Sprintf("func (t %s) Last() %s {\n", sliceTypeName, structName)
+				lastMethod += "\tif len(t) == 0 {\n"
 				lastMethod += fmt.Sprintf("\t\treturn %s{}\n", structName)
 				lastMethod += "\t}\n"
-				lastMethod += "\treturn s[len(s)-1]\n"
+				lastMethod += "\treturn t[len(s)-1]\n"
 				lastMethod += "}\n\n"
 
 				output += lastMethod

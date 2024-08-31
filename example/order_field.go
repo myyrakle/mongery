@@ -31,30 +31,30 @@ const ItemOrder_ItemID = "itemID" // 상품 번호
 
 type ItemOrders []ItemOrder
 
-func (s ItemOrders) Len() int {
-	return len(s)
+func (t ItemOrders) Len() int {
+	return len(t)
 }
 
-func (s ItemOrders) Append(v ItemOrder) ItemOrders {
-	s = append(s, v)
-	return s
+func (t ItemOrders) Append(v ItemOrder) ItemOrders {
+	t = append(t, v)
+	return t
 }
 
-func (s ItemOrders) Empty() bool {
-	return len(s) == 0
+func (t ItemOrders) Empty() bool {
+	return len(t) == 0
 }
 
-func (s ItemOrders) First() ItemOrder {
-	if len(s) == 0 {
+func (t ItemOrders) First() ItemOrder {
+	if len(t) == 0 {
 		return ItemOrder{}
 	}
-	return s[0]
+	return t[0]
 }
 
-func (s ItemOrders) Last() ItemOrder {
-	if len(s) == 0 {
+func (t ItemOrders) Last() ItemOrder {
+	if len(t) == 0 {
 		return ItemOrder{}
 	}
-	return s[len(s)-1]
+	return t[len(s)-1]
 }
 
