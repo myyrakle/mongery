@@ -5,18 +5,17 @@ import (
 	"log"
 	"os"
 
-	"github.com/myyrakle/mongery/pkg"
 	yaml "gopkg.in/yaml.v2"
 )
 
-func Load() pkg.ConfigFile {
+func Load() ConfigFile {
 	bytes, err := os.ReadFile(".mongery.yaml")
 
 	if err != nil {
 		fmt.Println("Error: .mongery.yaml file not found.")
 	}
 
-	decoded := &pkg.ConfigFile{}
+	decoded := &ConfigFile{}
 	err = yaml.Unmarshal(bytes, decoded)
 	if err != nil {
 		log.Fatalf("Unmarshal: %v", err)
