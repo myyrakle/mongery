@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/jinzhu/inflection"
 	"github.com/myyrakle/mongery/internal/annotation"
 	"github.com/myyrakle/mongery/internal/config"
 	"github.com/myyrakle/mongery/internal/utils/cast"
@@ -300,7 +301,55 @@ func writeFile(configFile config.ConfigFile, contexts []ProecssFileContext, inde
 				output += bsonConstant
 			}
 
-			// append
+			// 슬라이브 보일러플레이트 생성
+			if configFile.Features.Contains(config.FeatureSlice) {
+				// Slice named type 생성
+				sliceTypeName := inflection.Plural(structName)
+				output += fmt.Sprintf("type %s []%s\n\n", sliceTypeName, structName)
+
+				// Len 메서드 생성
+				lenMethod := fmt.Sprintf("func (s %s) Len() int {\n", sliceTypeName)
+				lenMethod += "\treturn len(s)\n"
+				lenMethod += "}\n\n"
+
+				output += lenMethod
+
+				// Append 메서드 생성
+				appendMethod := fmt.Sprintf("func (s %s) Append(v %s) %s {\n", sliceTypeName, structName, sliceTypeName)
+				appendMethod += "\ts = append(s, v)\n"
+				appendMethod += "\treturn s\n"
+				appendMethod += "}\n\n"
+
+				output += appendMethod
+
+				// Empty 메서드 생성
+				emptyMethod := fmt.Sprintf("func (s %s) Empty() bool {\n", sliceTypeName)
+				emptyMethod += "\treturn len(s) == 0\n"
+				emptyMethod += "}\n\n"
+
+				output += emptyMethod
+
+				// First 메서드 생성
+				firstMethod := fmt.Sprintf("func (s %s) First() %s {\n", sliceTypeName, structName)
+				firstMethod += "\tif len(s) == 0 {\n"
+				firstMethod += fmt.Sprintf("\t\treturn %s{}\n", structName)
+				firstMethod += "\t}\n"
+				firstMethod += "\treturn s[0]\n"
+				firstMethod += "}\n\n"
+
+				output += firstMethod
+
+				// Last 메서드 생성
+				lastMethod := fmt.Sprintf("func (s %s) Last() %s {\n", sliceTypeName, structName)
+				lastMethod += "\tif len(s) == 0 {\n"
+				lastMethod += fmt.Sprintf("\t\treturn %s{}\n", structName)
+				lastMethod += "\t}\n"
+				lastMethod += "\treturn s[len(s)-1]\n"
+				lastMethod += "}\n\n"
+
+				output += lastMethod
+			}
+
 			file, err := os.OpenFile(outputFilePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 			if err != nil {
 				panic(err)
